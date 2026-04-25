@@ -365,45 +365,6 @@ border-radius:10px;padding:20px;max-height:85vh;overflow-y:auto;
 </div>
 
 <script>
-// 公开云端存储（无实名、永久免费）
-const DB_URL = "https://api.jsonbin.io/v3/b/662c12e4ad9ca04d1990a999/latest";
-
-// 加载云端数据
-async function loadCloudData() {
-  try {
-    const res = await fetch(DB_URL);
-    const data = await res.json();
-    if (data && data.record) {
-      registeredUsers = data.record.registeredUsers || [{id:"000000",pwd:"1A109yyds",nick:"管理员"}];
-      birdData = data.record.birdData || {};
-      birdApplies = data.record.birdApplies || [];
-      posts = data.record.posts || [];
-      checkinRecords = data.record.checkinRecords || [];
-      chatRecords = data.record.chatRecords || [];
-    }
-  } catch (e) {
-    console.log("加载云端数据失败，使用默认数据");
-  }
-}
-
-// 保存数据到云端
-async function saveCloudData() {
-  try {
-    await fetch(DB_URL.replace("/latest", ""), {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Master-Key": "$2a$10$xxxxxxxxxxxxxxxxxxxxxxxxxx"
-      },
-      body: JSON.stringify({
-        registeredUsers, birdData, birdApplies, posts, checkinRecords, chatRecords
-      })
-    });
-  } catch (e) {
-    console.log("保存云端数据失败");
-  }
-}
-
 // ====================== IndexedDB 无限存储（只改这里，其他完全不动） ======================
 const DB = "BirdCPS_DB";
 const DB_VER = 1;
@@ -475,8 +436,9 @@ function compressImage(file) {
 
 // ====================== 初始化（只换加载方式） ======================
 window.onload = async function () {
-  await loadCloudData(); // 先加这一行！
-  // 下面是你原来的所有代码，不用改！
+    await fetch("https://api.yookimo.com/api/get").then(res=>res.json()).then(data=>{
+    if(data){registeredUsers=data.registeredUsers||registeredUsers;birdData=data.birdData||{};birdApplies=data.birdApplies||[];posts=data.posts||[];checkinRecords=data.checkinRecords||[];chatRecords=data.chatRecords||[];}
+  });
 
   await openIDB();
   birdData = await get("cpsBirdData") || {};
@@ -510,6 +472,13 @@ window.onload = async function () {
 
 // ====================== 统一保存 ======================
 async function saveAll() {
+    // 同步到公开云端（所有人可见）
+  await fetch("https://api.yookimo.com/api/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ registeredUsers, birdData, birdApplies, posts, checkinRecords, chatRecords })
+  });
+
   await set("cpsBirdData", birdData);
   await set("cpsBirdApplies", birdApplies);
   await set("cpsRegisteredUsers", registeredUsers);
@@ -629,10 +598,7 @@ async function rejectBirdApply(id) {
 function showAgreement(){document.getElementById('agreementModal').classList.remove('hidden');}
 function closeAgreement(){document.getElementById('agreementModal').classList.add('hidden');}
 
-function saveData() {
-  saveCloudData(); // 直接改成这个！
-}
-
+function saveData(){ saveAll(); } // 只映射，不动逻辑
 
 function updateNickname(){
 let v=document.getElementById('newNickname').value.trim();
