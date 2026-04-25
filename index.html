@@ -365,6 +365,45 @@ border-radius:10px;padding:20px;max-height:85vh;overflow-y:auto;
 </div>
 
 <script>
+// 公开云端存储（无实名、永久免费）
+const DB_URL = "https://api.jsonbin.io/v3/b/662c12e4ad9ca04d1990a999/latest";
+
+// 加载云端数据
+async function loadCloudData() {
+  try {
+    const res = await fetch(DB_URL);
+    const data = await res.json();
+    if (data && data.record) {
+      registeredUsers = data.record.registeredUsers || [{id:"000000",pwd:"1A109yyds",nick:"管理员"}];
+      birdData = data.record.birdData || {};
+      birdApplies = data.record.birdApplies || [];
+      posts = data.record.posts || [];
+      checkinRecords = data.record.checkinRecords || [];
+      chatRecords = data.record.chatRecords || [];
+    }
+  } catch (e) {
+    console.log("加载云端数据失败，使用默认数据");
+  }
+}
+
+// 保存数据到云端
+async function saveCloudData() {
+  try {
+    await fetch(DB_URL.replace("/latest", ""), {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": "$2a$10$xxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      body: JSON.stringify({
+        registeredUsers, birdData, birdApplies, posts, checkinRecords, chatRecords
+      })
+    });
+  } catch (e) {
+    console.log("保存云端数据失败");
+  }
+}
+
 // ====================== IndexedDB 无限存储（只改这里，其他完全不动） ======================
 const DB = "BirdCPS_DB";
 const DB_VER = 1;
@@ -436,6 +475,9 @@ function compressImage(file) {
 
 // ====================== 初始化（只换加载方式） ======================
 window.onload = async function () {
+  await loadCloudData(); // 先加这一行！
+  // 下面是你原来的所有代码，不用改！
+
   await openIDB();
   birdData = await get("cpsBirdData") || {};
   birdApplies = await get("cpsBirdApplies") || [];
@@ -587,7 +629,10 @@ async function rejectBirdApply(id) {
 function showAgreement(){document.getElementById('agreementModal').classList.remove('hidden');}
 function closeAgreement(){document.getElementById('agreementModal').classList.add('hidden');}
 
-function saveData(){ saveAll(); } // 只映射，不动逻辑
+function saveData() {
+  saveCloudData(); // 直接改成这个！
+}
+
 
 function updateNickname(){
 let v=document.getElementById('newNickname').value.trim();
